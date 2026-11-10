@@ -1,0 +1,26 @@
+# CMake and Visual Studio build output
+**/build/
+**/build-*/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/*.vcxproj
+**/*.vcxproj.filters
+**/*.sln
+**/*.obj
+**/*.lib
+**/*.exe
+**/*.tlog/
+**/*.recipe
+
+# Generated datasets and local test output
+/data/*.csv
+/core_test_data/
+
+# Local editor and operating-system files
+.vscode/
+.vs/
+*.user
+*.suo
+Thumbs.db
+.DS_Store

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NFT Ownership Lookup - DAA Project</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-label="NFT logo">
+          <img src="assets/nft-logo-hex-transparent.png" alt="NFT Ledger Lab logo">
+        </div>
+        <div>
+          <div class="brand-title">NFT Ledger Lab</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="#dashboard" data-page="dashboard" class="nav-link">Dashboard</a>
+        <a href="#lookup" data-page="lookup" class="nav-link">Ownership Lookup</a>
+        <a href="#history" data-page="history" class="nav-link">Ownership History</a>
+        <a href="#benchmark" data-page="benchmark" class="nav-link">Performance Comparison</a>
+        <a href="#hashstats" data-page="hashstats" class="nav-link">Hash Table Statistics</a>
+      </nav>
+      <div class="server-status" id="serverStatus"><span class="dot"></span><span id="serverStatusText">Connecting...</span></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="menu-btn" id="menuBtn" aria-label="Menu">&#9776;</button>
+        <h1 id="pageTitle">Dashboard</h1>
+      </header>
+
+      <div id="banner" class="banner hidden"></div>
+
+      <!-- ===== Page 1: Dashboard ===== -->
+      <section class="page" id="page-dashboard">
+        <div class="card intro">
+          <h2>Fast NFT Ownership and History Lookup</h2>
+        </div>
+        <div class="stat-grid">
+          <div class="card stat"><div class="stat-label">Total NFTs</div><div class="stat-value" id="st-nfts">-</div></div>
+          <div class="card stat"><div class="stat-label">Unique owners</div><div class="stat-value" id="st-owners">-</div></div>
+          <div class="card stat"><div class="stat-label">Ownership transfers</div><div class="stat-value" id="st-transfers">-</div><div class="stat-note">mints excluded</div></div>
+          <div class="card stat"><div class="stat-label">Hash load factor</div><div class="stat-value" id="st-load">-</div><div class="stat-note">elements / buckets</div></div>
+          <div class="card stat"><div class="stat-label">Total collisions</div><div class="stat-value" id="st-collisions">-</div><div class="stat-note">inserts into a non-empty bucket</div></div>
+        </div>
+        <div class="card">
+          <h3>Try these token IDs</h3>
+          <p class="muted">First, middle and last token in the loaded dataset.</p>
+          <div class="chips" id="sampleChips"></div>
+        </div>
+      </section>
+
+      <!-- ===== Page 2: Lookup ===== -->
+      <section class="page hidden" id="page-lookup">
+        <div class="card">
+          <h2>Find the current owner</h2>
+          <form id="lookupForm" class="form-row">
+            <div class="field">
+              <label for="lookupId">Token ID</label>
+              <input id="lookupId" type="text" inputmode="numeric" placeholder="e.g. 1001" autocomplete="off">
+            </div>
+            <div class="field">
+              <label>Search method</label>
+              <div class="segmented" id="methodSeg">
+                <label><input type="radio" name="method" value="hash" checked><span>Hash Table</span></label>
+                <label><input type="radio" name="method" value="binary"><span>Binary Search</span></label>
+                <label><input type="radio" name="method" value="both"><span>Both</span></label>
+              </div>
+            </div>
+            <button type="submit" class="btn primary">Search</button>
+          </form>
+          <div id="lookupMessage" class="message hidden"></div>
+        </div>
+        <div id="lookupResults" class="result-grid"></div>
+        <p class="muted small">Single-lookup times are only tens to hundreds of nanoseconds, so they are dominated by clock and network noise. Use the Performance Comparison page for reliable averages.</p>
+      </section>
+
+      <!-- ===== Page 3: History ===== -->
+      <section class="page hidden" id="page-history">
+        <div class="card">
+          <h2>Ownership history</h2>
+          <form id="historyForm" class="form-row">
+            <div class="field">
+              <label for="historyId">Token ID</label>
+              <input id="historyId" type="text" inputmode="numeric" placeholder="e.g. 1001" autocomplete="off">
+            </div>
+            <button type="submit" class="btn primary">Show history</button>
+          </form>
+          <div id="historyMessage" class="message hidden"></div>
+        </div>
+        <div id="historyResult" class="hidden">
+          <div class="card current-owner">
+            <div>
+              <div class="stat-label">Token ID</div>
+              <div class="stat-value" id="hist-token">-</div>
+            </div>
+            <div>
+              <div class="stat-label">Current owner</div>
+              <div class="mono big" id="hist-owner">-</div>
+            </div>
+            <div>
+              <div class="stat-label">Transactions</div>
+              <div class="stat-value" id="hist-count">-</div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Timeline (oldest first)</h3>
+            <ol class="timeline" id="timeline"></ol>
+          </div>
+          <div class="card">
+            <h3>Transfer this NFT</h3>
+            <p class="muted">Adds a new entry to the end of the history. Existing entries are never changed.</p>
+            <form id="transferForm" class="form-row">
+              <div class="field">
+                <label for="newOwner">New owner</label>
+                <input id="newOwner" type="text" maxlength="64" placeholder="e.g. 0xabc12345" autocomplete="off">
+              </div>
+              <button type="submit" class="btn">Transfer</button>
+            </form>
+            <div id="transferMessage" class="message hidden"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Page 4: Benchmark ===== -->
+      <section class="page hidden" id="page-benchmark">
+        <div class="card">
+          <h2>Benchmark: hash table vs binary search</h2>
+          <p class="muted">The server builds fresh datasets, uses the <em>same</em> random existing token IDs for both methods, runs an untimed warm-up, then times repeated passes with <code>std::chrono::steady_clock</code>. Dataset construction is outside the timer. Results below come straight from the C++ backend.</p>
+          <div class="form-row">
+            <div class="field">
+              <label>Dataset sizes</label>
+              <div class="checks" id="sizeChecks">
+                <label><input type="checkbox" value="1000" checked><span>1,000</span></label>
+                <label><input type="checkbox" value="10000" checked><span>10,000</span></label>
+                <label><input type="checkbox" value="100000" checked><span>100,000</span></label>
+                <label><input type="checkbox" value="1000000" checked><span>1,000,000</span></label>
+              </div>
+            </div>
+            <div class="field narrow">
+              <label for="bmQueries">Queries</label>
+              <input id="bmQueries" type="number" min="1" max="1000000" value="100000">
+            </div>
+            <div class="field narrow">
+              <label for="bmReps">Repetitions</label>
+              <input id="bmReps" type="number" min="1" max="100" value="10">
+            </div>
+            <button class="btn primary" id="bmRun">Run benchmark</button>
+          </div>
+          <div id="bmMessage" class="message hidden"></div>
+        </div>
+
+        <div id="bmResults" class="hidden">
+          <div class="card">
+            <h3>Average lookup time (nanoseconds per lookup)</h3>
+            <div class="chart-wrap"><canvas id="bmChart" height="340"></canvas></div>
+            <div class="legend" id="bmLegend"></div>
+          </div>
+          <div class="card">
+            <h3>Comparison table</h3>
+            <div class="table-wrap">
+              <table class="data" id="bmTable">
+                <thead>
+                  <tr>
+                    <th>NFTs (n)</th>
+                    <th>Hash avg (ns)</th>
+                    <th>Binary avg (ns)</th>
+                    <th>Binary / Hash</th>
+                    <th>Hash avg comparisons</th>
+                    <th>Binary avg comparisons</th>
+                    <th>Lookups per method</th>
+                    <th>Hash build (ms)</th>
+                    <th>Sorted build (ms)</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <p class="muted small" id="bmMeta"></p>
+          </div>
+          <div class="card">
+            <h3>Performance analysis</h3>
+            <div id="bmAnalysis" class="analysis"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Theoretical complexity</h3>
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr><th>Operation</th><th>Hash table (chaining)</th><th>Sorted array + binary search</th></tr></thead>
+              <tbody>
+                <tr><td>Lookup (average)</td><td>O(1 + &alpha;), &alpha; = n/m</td><td>O(log n)</td></tr>
+                <tr><td>Lookup (worst)</td><td>O(n)</td><td>O(log n)</td></tr>
+                <tr><td>Insert</td><td>O(1) average (O(n) worst, O(n) on rehash)</td><td>O(n): shift elements</td></tr>
+                <tr><td>Ownership update</td><td>One lookup, O(1) average</td><td>One lookup, O(log n)</td></tr>
+                <tr><td>Space</td><td>O(n + m)</td><td>O(n)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Page 5: Hash stats ===== -->
+      <section class="page hidden" id="page-hashstats">
+        <div class="stat-grid">
+          <div class="card stat"><div class="stat-label">Total buckets</div><div class="stat-value" id="hs-buckets">-</div></div>
+          <div class="card stat"><div class="stat-label">Number of NFTs</div><div class="stat-value" id="hs-elements">-</div></div>
+          <div class="card stat"><div class="stat-label">Load factor</div><div class="stat-value" id="hs-load">-</div></div>
+          <div class="card stat"><div class="stat-label">Collisions</div><div class="stat-value" id="hs-collisions">-</div></div>
+          <div class="card stat"><div class="stat-label">Longest chain</div><div class="stat-value" id="hs-longest">-</div></div>
+          <div class="card stat"><div class="stat-label">Empty buckets</div><div class="stat-value" id="hs-empty">-</div></div>
+        </div>
+        <div class="card">
+          <h3>Bucket distribution (chain length)</h3>
+          <p class="muted">Number of buckets that hold 0, 1, 2, ... elements.</p>
+          <div class="chart-wrap"><canvas id="hsChart" height="300"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Heat map of the bucket array</h3>
+          <p class="muted" id="hsHeatNote">Each cell is a contiguous range of buckets; brighter means more elements stored there.</p>
+          <div class="heatmap" id="heatmap"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/lookup.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/benchmark.js"></script>
+  <script src="js/hashstats.js"></script>
+  <script>NFTApp.start();</script>
+</body>
+</html>
